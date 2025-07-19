@@ -19,6 +19,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import java.util.Optional;
+import com.github.f4b6a3.uuid.UuidCreator;
+import java.util.UUID;
+
 
 @RestController
 @RequestMapping("/")
@@ -33,6 +36,7 @@ public class AuthController {
     @PostMapping("/signup")
     public ResponseEntity<AuthResponse> createUserHandler(@RequestBody User user) throws UserException
     {
+        String id = UuidCreator.getTimeOrdered().toString();
         String email = user.getEmail();
         String password = user.getPassword();
         String name = user.getName();
@@ -50,6 +54,8 @@ public class AuthController {
         }
 
         User createdUser = new User();
+
+        createdUser.setId(id);
         createdUser.setEmail(email);
         createdUser.setPassword(passwordEncoder.encode(password));
         createdUser.setName(name);

@@ -1,0 +1,48 @@
+plugins {
+	id 'java'
+	id 'application'
+	id 'org.javamodularity.moduleplugin' version '1.8.12'
+	id 'org.openjfx.javafxplugin' version '0.0.13'
+	id 'org.beryx.jlink' version '2.25.0'
+	id 'org.springframework.boot' version '3.2.0'
+	id 'io.spring.dependency-management' version '1.1.4'
+}
+
+group = 'com.uni'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+javafx {
+	version = '17.0.6'
+	modules = ['javafx.controls', 'javafx.fxml']
+}
+dependencies {
+	implementation 'org.snakeyaml:snakeyaml-engine:2.6'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation "org.flywaydb:flyway-mysql"
+	implementation 'mysql:mysql-connector-java:8.0.33'
+	compileOnly 'org.projectlombok:lombok'
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+	annotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}

@@ -24,9 +24,10 @@ public class AppConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/signup", "/api/auth/signin").permitAll()
+                        .requestMatchers("/signup", "/signin").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll()
+
                 )
                 .addFilterBefore(new JwtValidator(), BasicAuthenticationFilter.class)
                 .sessionManagement(session -> session

@@ -25,9 +25,10 @@ configurations {
 
 repositories {
 	mavenCentral()
+	maven { url 'https://jitpack.io' }
 }
 javafx {
-	version = '17.0.6'
+	version = '21.0.6'
 	modules = ['javafx.controls', 'javafx.fxml']
 }
 dependencies {
@@ -41,6 +42,10 @@ dependencies {
 	annotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+	implementation 'io.github.cdimascio:dotenv-java:3.0.0'
+
+
 
 	// Spring Boot Starter Web
 	implementation 'org.springframework.boot:spring-boot-starter-web'

@@ -25,4 +25,5 @@ public interface UserRepository extends JpaRepository<User, String> {
     List<User> findTopUsersByScore();
     boolean existsByEmail(String email);
     boolean existsByRegNo(String regNo);
+
 }

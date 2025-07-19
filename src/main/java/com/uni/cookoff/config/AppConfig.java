@@ -24,9 +24,9 @@ public class AppConfig {
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 .and()
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/signup", "/api/auth/signin").permitAll() // public endpoints
-                        .requestMatchers("/api/**").authenticated() // secure all other /api endpoints
-                        .anyRequest().permitAll()
+                        .requestMatchers("/signup", "/login").permitAll() // ✅ Allow public access
+                        .anyRequest().authenticated() // require auth for others
+
                 )
                 .addFilterBefore(new JwtValidator(), BasicAuthenticationFilter.class)
                 .csrf().disable()

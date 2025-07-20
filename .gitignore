@@ -37,5 +37,7 @@ out/
 .vscode/
 
 ## env
+**/**.env
 .env
+
 

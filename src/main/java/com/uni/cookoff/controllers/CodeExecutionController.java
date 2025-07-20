@@ -47,15 +47,6 @@ public class CodeExecutionController {
         }
     }
 
-    @PostMapping("/test-no-base64")
-    public ResponseEntity<String> testNoBase64() {
-        try {
-            String result = codeExecutionService.testWithoutBase64();
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
-        }
-    }
 
     @PostMapping("/test-with-base64")
     public ResponseEntity<String> testWithBase64() {

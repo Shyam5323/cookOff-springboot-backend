@@ -133,7 +133,36 @@ public class CodeExecutionService {
 
         return sendToJudge0(submission, true);
     }
+    public String testWithBase64() {
+        try {
+            String url = judge0Uri + "/submissions?base64_encoded=true&wait=true";
 
+            String sourceCode = Base64.getEncoder().encodeToString("print('Hello World')".getBytes());
+            String stdin = Base64.getEncoder().encodeToString("".getBytes());
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("language_id", 71);
+            payload.put("source_code", sourceCode);
+            payload.put("stdin", stdin);
+
+            HttpHeaders headers = createHeaders();
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
+
+            ObjectMapper mapper = new ObjectMapper();
+            log.info("Base64 payload: {}", mapper.writeValueAsString(payload));
+
+            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+
+            return "Success: " + response.getBody();
+
+        } catch (HttpClientErrorException e) {
+            log.error("HTTP Error: {}", e.getResponseBodyAsString());
+            return "Error: " + e.getResponseBodyAsString();
+        } catch (Exception e) {
+            log.error("Error: {}", e.getMessage(), e);
+            return "Error: " + e.getMessage();
+        }
+    }
     private JudgeResponse sendToJudge0(JudgeSubmission submission, boolean isSingle) {
         try {
             String url = judge0Uri + "/submissions?base64_encoded=true&wait=true";
@@ -182,22 +211,15 @@ public class CodeExecutionService {
 
         for (Testcase testCase : testCases) {
             System.out.println("Hello : " +  testCase);
-//            JudgeSubmission judgeSubmission = JudgeSubmission.builder()
-//                    .languageId(submission.getLanguageId())
-//                    .sourceCode(base64Encode(submission.getDescription())) // Use getDescription() instead
-//                    .input(base64Encode(testCase.getInput()))
-//                    .output(base64Encode(testCase.getExpectedOutput()))
-//                    .runtime(BigDecimal.valueOf(testCase.getRuntime()))
-//                    .callback(callbackUrl)
-//                    .build();
             JudgeSubmission judgeSubmission = JudgeSubmission.builder()
-                    .languageId(38)  // ✅ Python 3.8.1
-                    .sourceCode("print('Hello')")
-                    .input("1\n2")
-                    .output("3\n")
-                    .runtime(new BigDecimal("1.0"))
-                    .callback(null)
+                    .languageId(submission.getLanguageId())
+                    .sourceCode(base64Encode(submission.getDescription())) // Use getDescription() instead
+                    .input(base64Encode(testCase.getInput()))
+                    .output(base64Encode(testCase.getExpectedOutput()))
+                    .runtime(BigDecimal.valueOf(testCase.getRuntime()))
+                    .callback(callbackUrl)
                     .build();
+
 
             submissions.add(judgeSubmission);
             testCaseIds.add(testCase.getId());
@@ -205,7 +227,7 @@ public class CodeExecutionService {
 
 
         try {
-            String url = judge0Uri + "/submissions?base64_encoded=false&wait=false";
+            String url = judge0Uri + "/submissions?base64_encoded=true&wait=false";
             HttpHeaders headers = createHeaders();
             HttpEntity<List<JudgeSubmission>> entity = new HttpEntity<>(submissions, headers);
             ResponseEntity<JudgeToken[]> response = restTemplate.postForEntity(url, entity, JudgeToken[].class);
@@ -337,66 +359,7 @@ public class CodeExecutionService {
             return "Error: " + e.getMessage();
         }
     }
-    public String testWithoutBase64() {
-        try {
-            // Test without base64 encoding first
-            String url = judge0Uri + "/submissions?base64_encoded=false&wait=true";
 
-            // Create a simple map to ensure clean JSON
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("language_id", 71); // Python 3.8.1
-            payload.put("source_code", "print('Hello World')");
-            payload.put("stdin", "");
 
-            HttpHeaders headers = createHeaders();
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
-
-            ObjectMapper mapper = new ObjectMapper();
-            log.info("Sending payload: {}", mapper.writeValueAsString(payload));
-
-            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
-
-            log.info("Response: {}", response.getBody());
-            return "Success: " + response.getBody();
-
-        } catch (HttpClientErrorException e) {
-            log.error("HTTP Error: {}", e.getResponseBodyAsString());
-            return "Error: " + e.getResponseBodyAsString();
-        } catch (Exception e) {
-            log.error("Error: {}", e.getMessage(), e);
-            return "Error: " + e.getMessage();
-        }
-    }
-
-    public String testWithBase64() {
-        try {
-            String url = judge0Uri + "/submissions?base64_encoded=true&wait=true";
-
-            String sourceCode = Base64.getEncoder().encodeToString("print('Hello World')".getBytes());
-            String stdin = Base64.getEncoder().encodeToString("".getBytes());
-
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("language_id", 71);
-            payload.put("source_code", sourceCode);
-            payload.put("stdin", stdin);
-
-            HttpHeaders headers = createHeaders();
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
-
-            ObjectMapper mapper = new ObjectMapper();
-            log.info("Base64 payload: {}", mapper.writeValueAsString(payload));
-
-            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
-
-            return "Success: " + response.getBody();
-
-        } catch (HttpClientErrorException e) {
-            log.error("HTTP Error: {}", e.getResponseBodyAsString());
-            return "Error: " + e.getResponseBodyAsString();
-        } catch (Exception e) {
-            log.error("Error: {}", e.getMessage(), e);
-            return "Error: " + e.getMessage();
-        }
-    }
 
 }

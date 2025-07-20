@@ -1,6 +1,5 @@
 package com.uni.cookoff.controllers;
 
-
 import com.uni.cookoff.dto.request.SubmissionRequest;
 import com.uni.cookoff.dto.response.JudgeCallback;
 import com.uni.cookoff.dto.response.RunCodeResponse;
@@ -22,33 +21,6 @@ public class CodeExecutionController {
 
     private final CodeExecutionService codeExecutionService;
 
-    /**
-     * Run code against test cases (for testing without saving submission)
-     */
-    // Add this to your CodeExecutionController.java
-
-    // Add this to your CodeExecutionController.java
-
-    @GetMapping("/test-judge0")
-    public ResponseEntity<String> testJudge0() {
-        try {
-            codeExecutionService.testJudge0Connection();
-            return ResponseEntity.ok("Check logs for available languages");
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
-        }
-    }
-
-    @PostMapping("/test-simple")
-    public ResponseEntity<String> testSimpleSubmission() {
-        try {
-            String result = codeExecutionService.testSimpleSubmission();
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
-        }
-    }
-
 
     @PostMapping("/test-with-base64")
     public ResponseEntity<String> testWithBase64() {
@@ -60,12 +32,8 @@ public class CodeExecutionController {
         }
     }
     @PostMapping("/runcode")
-    public ResponseEntity<RunCodeResponse> runCode(
-            @Valid @RequestBody SubmissionRequest request,
-            Authentication authentication) {
-
+    public ResponseEntity<RunCodeResponse> runCode(@Valid @RequestBody SubmissionRequest request) {
         try {
-            String questionId = (request.getQuestionId());
             RunCodeResponse response = codeExecutionService.runCode(request);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -84,8 +52,6 @@ public class CodeExecutionController {
 
         try {
             String userId = (authentication.getName());
-            String questionId = (request.getQuestionId());
-
             SubmissionResponse response = codeExecutionService.submitCode(request, userId);
             return ResponseEntity.ok(response);
         } catch (Exception e) {

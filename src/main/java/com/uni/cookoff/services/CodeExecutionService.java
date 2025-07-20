@@ -12,9 +12,6 @@ import com.uni.cookoff.models.Question;
 import com.uni.cookoff.models.Testcase;
 import com.uni.cookoff.models.Submission;
 import com.uni.cookoff.models.SubmissionResult;
-import com.uni.cookoff.repositories.TestcaseRepository;
-import com.uni.cookoff.repositories.SubmissionRepository;
-import com.uni.cookoff.repositories.SubmissionResultRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,9 +32,9 @@ import java.util.concurrent.Executors;
 public class CodeExecutionService {
 
     private final RestTemplate restTemplate;
-    private final TestcaseRepository testCaseRepository;
-    private final SubmissionRepository submissionRepository;
-    private final SubmissionResultRepository submissionResultRepository;
+    private final TestcaseService testcaseService;
+    private final SubmissionService submissionService;
+    private final SubmissionResultService submissionResultService;
 
     @Value("${judge0.uri}")
     private String judge0Uri;
@@ -51,7 +48,7 @@ public class CodeExecutionService {
     private final ExecutorService executorService = Executors.newFixedThreadPool(10);
 
     public RunCodeResponse runCode(SubmissionRequest request) {
-        List<Testcase> testCases = testCaseRepository.findByQuestionId(request.getQuestionId());
+        List<Testcase> testCases = testcaseService.findByQuestionId(request.getQuestionId());
 
         if (testCases.isEmpty()) {
             throw new RuntimeException("No test cases found for question");
@@ -76,7 +73,7 @@ public class CodeExecutionService {
     }
 
     public SubmissionResponse submitCode(SubmissionRequest request, String userId) {
-        List<Testcase> testCases = testCaseRepository.findByQuestionId(request.getQuestionId());
+        List<Testcase> testCases = testcaseService.findByQuestionId(request.getQuestionId());
 
         if (testCases.isEmpty()) {
             throw new RuntimeException("No test cases found for question");
@@ -90,7 +87,7 @@ public class CodeExecutionService {
                 .status("PENDING")
                 .build();
 
-        submission = submissionRepository.save(submission);
+        submission = submissionService.saveSubmission(submission);
 
         Submission finalSubmission = submission;
         CompletableFuture.runAsync(() -> {
@@ -116,7 +113,7 @@ public class CodeExecutionService {
                     .description(callback.getStatus().getDescription())
                     .build();
 
-            submissionResultRepository.save(result);
+            submissionResultService.saveSubmissionResult(result);
 
             updateSubmissionStatus(submissionId);
 
@@ -129,22 +126,24 @@ public class CodeExecutionService {
         // Use a known language ID - try 38 for Python 3
         Integer languageId = request.getLanguageId();
 
+        System.out.println(request);
+
         JudgeSubmission submission = JudgeSubmission.builder()
-                .languageId(languageId)  // Use corrected language ID
-                .sourceCode(base64Encode(request.getSourceCode()))
-                .input(base64Encode(testCase.getInput()))
-                .output(base64Encode(testCase.getExpectedOutput()))
-                .runtime(BigDecimal.valueOf(Math.min(testCase.getRuntime(), 20.0))) // Reduce to 5.0 seconds
+                .languageId(languageId)
+                .sourceCode((request.getSourceCode()))
+                .input((testCase.getInput()))
+                .output((testCase.getExpectedOutput()))
+                .runtime(BigDecimal.valueOf(Math.min(testCase.getRuntime(), 20.0)))
                 .build();
 
         return sendToJudge0(submission);
     }
     public String testWithBase64() {
         try {
-            String url = judge0Uri + "/submissions?base64_encoded=true&wait=true";
+            String url = judge0Uri + "/submissions?base64_encoded=false&wait=false";
 
-            String sourceCode = Base64.getEncoder().encodeToString("print('Hello World')".getBytes());
-            String stdin = Base64.getEncoder().encodeToString("".getBytes());
+            String sourceCode = "print('Hello World')";
+            String stdin = "";
 
             Map<String, Object> payload = new HashMap<>();
             payload.put("language_id", 71);
@@ -156,6 +155,8 @@ public class CodeExecutionService {
 
             ObjectMapper mapper = new ObjectMapper();
             log.info("Base64 payload: {}", mapper.writeValueAsString(payload));
+
+
 
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
 
@@ -169,71 +170,54 @@ public class CodeExecutionService {
             return "Error: " + e.getMessage();
         }
     }
-    private JudgeResponse sendToJudge0(JudgeSubmission submission) {
-        try {
-            String url = judge0Uri + "/submissions?base64_encoded=true&wait=true";
-            HttpHeaders headers = createHeaders();
+   private JudgeResponse sendToJudge0(JudgeSubmission submission) {
+       try {
+           String url = judge0Uri + "/submissions?base64_encoded=false&wait=true";
 
-            // Debug the actual JSON being sent
-            ObjectMapper mapper = new ObjectMapper();
-            String jsonPayload = mapper.writeValueAsString(submission);
-            log.info("JSON being sent to Judge0: {}", jsonPayload);
+        HttpHeaders headers = createHeaders();
+           headers.setContentType(MediaType.APPLICATION_JSON);
 
-            HttpEntity<JudgeSubmission> entity = new HttpEntity<>(submission, headers);
+           ObjectMapper mapper = new ObjectMapper();
+           String rawJson = mapper.writeValueAsString(submission);
+           System.out.println("Raw JSON: " + rawJson);
 
-            ResponseEntity<JudgeResponse> response = restTemplate.postForEntity(url, entity, JudgeResponse.class);
+           HttpEntity<String> entity = new HttpEntity<>(rawJson, headers);
+           ResponseEntity<JudgeResponse> response = restTemplate.postForEntity(url, entity, JudgeResponse.class);
 
-            if (response.getStatusCode() == HttpStatus.CREATED && response.getBody() != null) {
-                return response.getBody();
-            } else {
-                throw new RuntimeException("Failed to send submission to Judge0");
-            }
-        } catch (HttpClientErrorException e) {
-            log.error("Judge0 API Error: Status={}, Response={}", e.getStatusCode(), e.getResponseBodyAsString());
-            throw new RuntimeException("Judge0 API Error: " + e.getResponseBodyAsString(), e);
-        } catch (Exception e) {
-            log.error("Error in sendToJudge0: {}", e.getMessage(), e);
-            throw new RuntimeException("Error in sendToJudge0", e);
-        }
-    }
+           if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+               return response.getBody();
+           } else {
+               throw new RuntimeException("Judge0 failed: " + response.getStatusCode() + ", body: " + mapper.writeValueAsString(response.getBody()));
+           }
 
-    // Add a method to test connectivity and get available languages
-    public void testJudge0Connection() {
-        try {
-            String url = judge0Uri + "/languages";
-            HttpHeaders headers = createHeaders();
-            HttpEntity<Void> entity = new HttpEntity<>(headers);
 
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-            log.info("Available languages: {}", response.getBody());
-        } catch (Exception e) {
-            log.error("Failed to get languages from Judge0: {}", e.getMessage(), e);
-        }
-    }
+       } catch (HttpClientErrorException e) {
+           log.error("Judge0 API Error: Status={}, Response={}", e.getStatusCode(), e.getResponseBodyAsString());
+           throw new RuntimeException("Judge0 API Error: " + e.getResponseBodyAsString(), e);
+       } catch (Exception e) {
+           log.error("Error in sendToJudge0: {}", e.getMessage(), e);
+           throw new RuntimeException("Error in sendToJudge0", e);
+       }
+   }
 
     private void submitToJudge0(Submission submission, List<Testcase> testCases) {
+
         List<JudgeSubmission> submissions = new ArrayList<>();
         List<String> testCaseIds = new ArrayList<>();
-
         for (Testcase testCase : testCases) {
-            System.out.println("Hello : " +  testCase);
             JudgeSubmission judgeSubmission = JudgeSubmission.builder()
                     .languageId(submission.getLanguageId())
-                    .sourceCode(base64Encode(submission.getDescription())) // Use getDescription() instead
-                    .input(base64Encode(testCase.getInput()))
-                    .output(base64Encode(testCase.getExpectedOutput()))
+                    .sourceCode(submission.getDescription())
+                    .input((testCase.getInput()))
+                    .output((testCase.getExpectedOutput()))
                     .runtime(BigDecimal.valueOf(testCase.getRuntime()))
                     .callback(callbackUrl)
                     .build();
-
-
             submissions.add(judgeSubmission);
             testCaseIds.add(testCase.getId());
         }
-
-
         try {
-            String url = judge0Uri + "/submissions?base64_encoded=true&wait=false";
+            String url = judge0Uri + "/submissions?base64_encoded=false&wait=false";
             HttpHeaders headers = createHeaders();
             HttpEntity<List<JudgeSubmission>> entity = new HttpEntity<>(submissions, headers);
             ResponseEntity<JudgeToken[]> response = restTemplate.postForEntity(url, entity, JudgeToken[].class);
@@ -256,7 +240,7 @@ public class CodeExecutionService {
     }
 
     private void updateSubmissionStatus(String submissionId) {
-        List<SubmissionResult> results = submissionResultRepository.findBySubmissionId(submissionId);
+        List<SubmissionResult> results = submissionResultService.findBySubmissionId(submissionId);
 
         if (!results.isEmpty()) {
             long passed = results.stream()
@@ -265,45 +249,32 @@ public class CodeExecutionService {
 
             long failed = results.size() - passed;
 
-            Submission submission = submissionRepository.findById(submissionId).orElse(null);
+            Submission submission = submissionService.findById(submissionId).orElse(null);
             if (submission != null) {
                 submission.setTestcasesPassed((int) passed); // Corrected method name
                 submission.setTestcasesFailed((int) failed); // Corrected method name
                 submission.setStatus("COMPLETED");
-                submissionRepository.save(submission);
+                submissionService.saveSubmission(submission);
             }
         }
     }
+
+
+
 
     private HttpHeaders createHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
-        // Check if you're using RapidAPI or direct Judge0
         if (judge0Uri.contains("rapidapi")) {
             headers.set("x-rapidapi-host", "judge0-ce.p.rapidapi.com");
             headers.set("x-rapidapi-key", judge0Token);
         } else {
-            // For direct Judge0 API, you might need different headers
             headers.set("Authorization", "Bearer " + judge0Token);
         }
 
         return headers;
     }
-
-    private String base64Encode(String data) {
-        return Base64.getEncoder().encodeToString(data.getBytes());
-    }
-
-    private String base64Decode(String encoded) {
-        try {
-            return new String(Base64.getDecoder().decode(encoded));
-        } catch (Exception e) {
-            return encoded;
-        }
-    }
-
-
     private String mapStatus(String statusId) {
         return switch (statusId) {
             case "1" -> "In Queue";
@@ -318,45 +289,4 @@ public class CodeExecutionService {
             default -> "Unknown";
         };
     }
-// Add these methods to your CodeExecutionService.java
-
-
-
-    public String testSimpleSubmission() {
-        try {
-            // Test with the simplest possible payload - no base64 encoding
-            String url = judge0Uri + "/submissions?base64_encoded=false&wait=true";
-
-            // Create the simplest possible JSON manually
-            String jsonPayload = "{\n" +
-                    "  \"language_id\": 38,\n" +
-                    "  \"source_code\": \"print('Hello World')\",\n" +
-                    "  \"stdin\": \"\"\n" +
-                    "}";
-
-            HttpHeaders headers = createHeaders();
-            HttpEntity<String> entity = new HttpEntity<>(jsonPayload, headers);
-
-            log.info("Testing with simple payload: {}", jsonPayload);
-            log.info("Headers: {}", headers);
-            log.info("URL: {}", url);
-
-            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
-
-            log.info("Response status: {}", response.getStatusCode());
-            log.info("Response body: {}", response.getBody());
-
-            return "Success: " + response.getBody();
-
-        } catch (HttpClientErrorException e) {
-            log.error("HTTP Error: Status={}, Response={}", e.getStatusCode(), e.getResponseBodyAsString());
-            return "HTTP Error: " + e.getResponseBodyAsString();
-        } catch (Exception e) {
-            log.error("Error in testSimpleSubmission: {}", e.getMessage(), e);
-            return "Error: " + e.getMessage();
-        }
-    }
-
-
-
 }

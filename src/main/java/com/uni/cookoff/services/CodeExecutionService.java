@@ -1,7 +1,13 @@
 package com.uni.cookoff.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.uni.cookoff.dto.*;
+import com.uni.cookoff.dto.request.JudgeSubmission;
+import com.uni.cookoff.dto.request.JudgeToken;
+import com.uni.cookoff.dto.request.SubmissionRequest;
+import com.uni.cookoff.dto.response.JudgeCallback;
+import com.uni.cookoff.dto.response.JudgeResponse;
+import com.uni.cookoff.dto.response.RunCodeResponse;
+import com.uni.cookoff.dto.response.SubmissionResponse;
 import com.uni.cookoff.models.Question;
 import com.uni.cookoff.models.Testcase;
 import com.uni.cookoff.models.Submission;
@@ -44,8 +50,8 @@ public class CodeExecutionService {
 
     private final ExecutorService executorService = Executors.newFixedThreadPool(10);
 
-    public RunCodeResponse runCode(RunCodeRequest request, String questionId) {
-        List<Testcase> testCases = testCaseRepository.findByQuestionId(questionId);
+    public RunCodeResponse runCode(SubmissionRequest request) {
+        List<Testcase> testCases = testCaseRepository.findByQuestionId(request.getQuestionId());
 
         if (testCases.isEmpty()) {
             throw new RuntimeException("No test cases found for question");
@@ -69,8 +75,8 @@ public class CodeExecutionService {
                 .build();
     }
 
-    public SubmissionResponse submitCode(SubmissionRequest request, String userId, String questionId) {
-        List<Testcase> testCases = testCaseRepository.findByQuestionId(questionId);
+    public SubmissionResponse submitCode(SubmissionRequest request, String userId) {
+        List<Testcase> testCases = testCaseRepository.findByQuestionId(request.getQuestionId());
 
         if (testCases.isEmpty()) {
             throw new RuntimeException("No test cases found for question");
@@ -78,7 +84,7 @@ public class CodeExecutionService {
 
         Submission submission = Submission.builder()
                 .id(userId)
-                .question(Question.builder().id(questionId).build())
+                .question(Question.builder().id(request.getQuestionId()).build())
                 .languageId(request.getLanguageId())
                 .description(request.getSourceCode())
                 .status("PENDING")
@@ -119,19 +125,19 @@ public class CodeExecutionService {
         }
     }
 
-    private JudgeResponse executeTestCase(RunCodeRequest request, Testcase testCase) {
+    private JudgeResponse executeTestCase(SubmissionRequest request, Testcase testCase) {
         // Use a known language ID - try 38 for Python 3
-        Integer languageId = request.getLanguageId() == 71 ? 38 : request.getLanguageId();
+        Integer languageId = request.getLanguageId();
 
         JudgeSubmission submission = JudgeSubmission.builder()
                 .languageId(languageId)  // Use corrected language ID
                 .sourceCode(base64Encode(request.getSourceCode()))
                 .input(base64Encode(testCase.getInput()))
                 .output(base64Encode(testCase.getExpectedOutput()))
-                .runtime(BigDecimal.valueOf(Math.min(testCase.getRuntime(), 5.0))) // Reduce to 5.0 seconds
+                .runtime(BigDecimal.valueOf(Math.min(testCase.getRuntime(), 20.0))) // Reduce to 5.0 seconds
                 .build();
 
-        return sendToJudge0(submission, true);
+        return sendToJudge0(submission);
     }
     public String testWithBase64() {
         try {
@@ -163,7 +169,7 @@ public class CodeExecutionService {
             return "Error: " + e.getMessage();
         }
     }
-    private JudgeResponse sendToJudge0(JudgeSubmission submission, boolean isSingle) {
+    private JudgeResponse sendToJudge0(JudgeSubmission submission) {
         try {
             String url = judge0Uri + "/submissions?base64_encoded=true&wait=true";
             HttpHeaders headers = createHeaders();
@@ -297,15 +303,6 @@ public class CodeExecutionService {
         }
     }
 
-    private int getRuntimeMultiplier(int languageId) {
-        return switch (languageId) {
-            case 50, 54, 60, 73, 63 -> 1;
-            case 51, 62 -> 2;
-            case 68 -> 3;
-            case 71 -> 5;
-            default -> throw new IllegalArgumentException("Invalid language ID: " + languageId);
-        };
-    }
 
     private String mapStatus(String statusId) {
         return switch (statusId) {

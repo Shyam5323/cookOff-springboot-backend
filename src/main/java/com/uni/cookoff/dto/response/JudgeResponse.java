@@ -1,4 +1,4 @@
-package com.uni.cookoff.dto;
+package com.uni.cookoff.dto.response;
 
 
 import lombok.AllArgsConstructor;

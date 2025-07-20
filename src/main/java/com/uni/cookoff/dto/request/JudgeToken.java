@@ -1,4 +1,4 @@
-package com.uni.cookoff.dto;
+package com.uni.cookoff.dto.request;
 
 
 import lombok.AllArgsConstructor;
@@ -10,7 +10,6 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class JudgeStatus {
-    private String id;
-    private String description;
+public class JudgeToken {
+    private String token;
 }

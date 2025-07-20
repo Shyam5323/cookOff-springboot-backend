@@ -1,4 +1,4 @@
-package com.uni.cookoff.dto;
+package com.uni.cookoff.dto.response;
 
 
 import lombok.AllArgsConstructor;
@@ -10,10 +10,6 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class JudgeCallback {
+public class SubmissionResponse {
     private String submissionId;
-    private String testCaseId;
-    private String time;
-    private Integer memory;
-    private JudgeStatus status;
 }

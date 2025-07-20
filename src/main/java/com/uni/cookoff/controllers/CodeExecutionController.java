@@ -1,7 +1,10 @@
 package com.uni.cookoff.controllers;
 
 
-import com.uni.cookoff.dto.*;
+import com.uni.cookoff.dto.request.SubmissionRequest;
+import com.uni.cookoff.dto.response.JudgeCallback;
+import com.uni.cookoff.dto.response.RunCodeResponse;
+import com.uni.cookoff.dto.response.SubmissionResponse;
 import com.uni.cookoff.services.CodeExecutionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,10 +13,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
-import java.util.UUID;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/")
 @RequiredArgsConstructor
 @Slf4j
 public class CodeExecutionController {
@@ -59,12 +61,12 @@ public class CodeExecutionController {
     }
     @PostMapping("/runcode")
     public ResponseEntity<RunCodeResponse> runCode(
-            @Valid @RequestBody RunCodeRequest request,
+            @Valid @RequestBody SubmissionRequest request,
             Authentication authentication) {
 
         try {
             String questionId = (request.getQuestionId());
-            RunCodeResponse response = codeExecutionService.runCode(request, questionId);
+            RunCodeResponse response = codeExecutionService.runCode(request);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Error running code: {}", e.getMessage(), e);
@@ -84,7 +86,7 @@ public class CodeExecutionController {
             String userId = (authentication.getName());
             String questionId = (request.getQuestionId());
 
-            SubmissionResponse response = codeExecutionService.submitCode(request, userId, questionId);
+            SubmissionResponse response = codeExecutionService.submitCode(request, userId);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Error submitting code: {}", e.getMessage(), e);

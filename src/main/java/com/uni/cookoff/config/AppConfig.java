@@ -10,6 +10,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -19,14 +20,17 @@ import java.util.Collections;
 
 @Configuration
 public class AppConfig {
-
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/signup", "/login").permitAll()
-                        .anyRequest().permitAll()
-
+//                        .anyRequest().authenticated()
+                        .anyRequest().permitAll() // For testing purposes, allow all requests
                 )
                 .addFilterBefore(new JwtValidator(), BasicAuthenticationFilter.class)
                 .sessionManagement(session -> session

@@ -1,4 +1,4 @@
-package com.uni.cookoff.dto;
+package com.uni.cookoff.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonInclude;

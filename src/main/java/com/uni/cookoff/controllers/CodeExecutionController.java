@@ -52,7 +52,10 @@ public class CodeExecutionController {
 
         try {
             String userId = (authentication.getName());
-            SubmissionResponse response = codeExecutionService.submitCode(request, userId);
+            System.out.println(userId);
+            System.out.println(userId.substring(17,53));
+
+            SubmissionResponse response = codeExecutionService.submitCode(request, userId.substring(17,53));
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Error submitting code: {}", e.getMessage(), e);

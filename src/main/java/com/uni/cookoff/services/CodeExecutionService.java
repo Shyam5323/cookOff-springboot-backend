@@ -1,6 +1,7 @@
 package com.uni.cookoff.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.f4b6a3.uuid.UuidCreator;
 import com.uni.cookoff.dto.request.JudgeSubmission;
 import com.uni.cookoff.dto.request.JudgeToken;
 import com.uni.cookoff.dto.request.SubmissionRequest;
@@ -8,10 +9,7 @@ import com.uni.cookoff.dto.response.JudgeCallback;
 import com.uni.cookoff.dto.response.JudgeResponse;
 import com.uni.cookoff.dto.response.RunCodeResponse;
 import com.uni.cookoff.dto.response.SubmissionResponse;
-import com.uni.cookoff.models.Question;
-import com.uni.cookoff.models.Testcase;
-import com.uni.cookoff.models.Submission;
-import com.uni.cookoff.models.SubmissionResult;
+import com.uni.cookoff.models.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,6 +33,7 @@ public class CodeExecutionService {
     private final TestcaseService testcaseService;
     private final SubmissionService submissionService;
     private final SubmissionResultService submissionResultService;
+    private final UserService userService;
 
     @Value("${judge0.uri}")
     private String judge0Uri;
@@ -74,13 +73,16 @@ public class CodeExecutionService {
 
     public SubmissionResponse submitCode(SubmissionRequest request, String userId) {
         List<Testcase> testCases = testcaseService.findByQuestionId(request.getQuestionId());
-
+        User user = userService.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
         if (testCases.isEmpty()) {
             throw new RuntimeException("No test cases found for question");
         }
 
+        String submission_id = UuidCreator.getTimeOrdered().toString();
         Submission submission = Submission.builder()
-                .id(userId)
+                .user(user)
+                .id(submission_id)
                 .question(Question.builder().id(request.getQuestionId()).build())
                 .languageId(request.getLanguageId())
                 .description(request.getSourceCode())
@@ -91,6 +93,7 @@ public class CodeExecutionService {
 
         Submission finalSubmission = submission;
         CompletableFuture.runAsync(() -> {
+            System.out.println("reached here ");
             submitToJudge0(finalSubmission, testCases);
         }, executorService);
 
@@ -201,7 +204,7 @@ public class CodeExecutionService {
    }
 
     private void submitToJudge0(Submission submission, List<Testcase> testCases) {
-
+        System.out.println("in submit tp judge 0");
         List<JudgeSubmission> submissions = new ArrayList<>();
         List<String> testCaseIds = new ArrayList<>();
         for (Testcase testCase : testCases) {
@@ -210,16 +213,21 @@ public class CodeExecutionService {
                     .sourceCode(submission.getDescription())
                     .input((testCase.getInput()))
                     .output((testCase.getExpectedOutput()))
-                    .runtime(BigDecimal.valueOf(testCase.getRuntime()))
+                    .runtime(BigDecimal.valueOf(Math.min(testCase.getRuntime(), 20.0)))
                     .callback(callbackUrl)
                     .build();
             submissions.add(judgeSubmission);
             testCaseIds.add(testCase.getId());
         }
         try {
-            String url = judge0Uri + "/submissions?base64_encoded=false&wait=false";
+            String url = judge0Uri + "/submissions?base64_encoded=false&wait=true";
             HttpHeaders headers = createHeaders();
-            HttpEntity<List<JudgeSubmission>> entity = new HttpEntity<>(submissions, headers);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            ObjectMapper mapper = new ObjectMapper();
+            Object firstSubmission = submissions.getFirst();
+            String rawJson = mapper.writeValueAsString(firstSubmission);
+            HttpEntity<String> entity = new HttpEntity<>(rawJson, headers);
+            System.out.println("Raw JSON for submission: " + rawJson);
             ResponseEntity<JudgeToken[]> response = restTemplate.postForEntity(url, entity, JudgeToken[].class);
 
             if (response.getStatusCode() == HttpStatus.CREATED && response.getBody() != null) {

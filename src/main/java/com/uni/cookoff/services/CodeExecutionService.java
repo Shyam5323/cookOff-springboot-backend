@@ -136,6 +136,7 @@ public class CodeExecutionService {
         System.out.println(request);
 
         JudgeSubmission submission = JudgeSubmission.builder()
+                .callback(callbackUrl)
                 .languageId(languageId)
                 .sourceCode((request.getSourceCode()))
                 .input((testCase.getInput()))
@@ -145,41 +146,9 @@ public class CodeExecutionService {
 
         return sendToJudge0(submission);
     }
-    public String testWithBase64() {
-        try {
-            String url = judge0Uri + "/submissions?base64_encoded=false&wait=false";
-
-            String sourceCode = "print('Hello World')";
-            String stdin = "";
-
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("language_id", 71);
-            payload.put("source_code", sourceCode);
-            payload.put("stdin", stdin);
-
-            HttpHeaders headers = createHeaders();
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
-
-            ObjectMapper mapper = new ObjectMapper();
-            log.info("Base64 payload: {}", mapper.writeValueAsString(payload));
-
-
-
-            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
-
-            return "Success: " + response.getBody();
-
-        } catch (HttpClientErrorException e) {
-            log.error("HTTP Error: {}", e.getResponseBodyAsString());
-            return "Error: " + e.getResponseBodyAsString();
-        } catch (Exception e) {
-            log.error("Error: {}", e.getMessage(), e);
-            return "Error: " + e.getMessage();
-        }
-    }
    private JudgeResponse sendToJudge0(JudgeSubmission submission) {
        try {
-           String url = judge0Uri + "/submissions?base64_encoded=false&wait=true";
+           String url = judge0Uri + "/submissions?base64_encoded=false&wait=false";
 
         HttpHeaders headers = createHeaders();
            headers.setContentType(MediaType.APPLICATION_JSON);
@@ -242,8 +211,6 @@ public class CodeExecutionService {
             // Expect an array of JudgeToken in return from the batch endpoint
             ResponseEntity<JudgeToken[]> response = restTemplate.postForEntity(url, entity, JudgeToken[].class);
 
-//            System.out.println(Arrays.toString(response.getBody()));
-            log.info(Arrays.toString(response.getBody()));
 
             if (response.getStatusCode() == HttpStatus.CREATED && response.getBody() != null) {
                 storeTokens(submission.getId(), response.getBody(), testCaseIds);
@@ -259,15 +226,12 @@ public class CodeExecutionService {
         new SubmissionToken();
         SubmissionToken submissionToken;
         for (int i = 0; i < tokens.length && i < testCaseIds.size(); i++) {
-            log.info("Stored token {} for submission {} test case {}",
-                    tokens[i].getToken(), submissionId, testCaseIds.get(i));
             submissionToken = SubmissionToken.builder()
                     .token(tokens[i].getToken())
                     .submission(Submission.builder().id(submissionId).build())
                     .testcase(Testcase.builder().id(testCaseIds.get(i)).build())
                     .build();
             submissionTokenService.saveSubmissionToken(submissionToken);
-
         }
     }
 

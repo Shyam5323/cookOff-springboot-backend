@@ -7,6 +7,8 @@ spring:
   flyway:
     enabled: false
     locations: classpath:db/migration
+  main:
+    banner-mode: off
 
   jpa:
     hibernate:

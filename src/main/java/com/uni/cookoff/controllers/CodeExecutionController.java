@@ -22,15 +22,6 @@ public class CodeExecutionController {
     private final CodeExecutionService codeExecutionService;
 
 
-    @PostMapping("/test-with-base64")
-    public ResponseEntity<String> testWithBase64() {
-        try {
-            String result = codeExecutionService.testWithBase64();
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
-        }
-    }
     @PostMapping("/runcode")
     public ResponseEntity<RunCodeResponse> runCode(@Valid @RequestBody SubmissionRequest request) {
         try {

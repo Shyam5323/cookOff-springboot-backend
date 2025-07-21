@@ -2,6 +2,7 @@ package com.uni.cookoff.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.f4b6a3.uuid.UuidCreator;
+import com.uni.cookoff.dto.request.BatchSubmissionRequest;
 import com.uni.cookoff.dto.request.JudgeSubmission;
 import com.uni.cookoff.dto.request.JudgeToken;
 import com.uni.cookoff.dto.request.SubmissionRequest;
@@ -34,6 +35,7 @@ public class CodeExecutionService {
     private final SubmissionService submissionService;
     private final SubmissionResultService submissionResultService;
     private final UserService userService;
+    private final SubmissionTokenService submissionTokenService;
 
     @Value("${judge0.uri}")
     private String judge0Uri;
@@ -103,6 +105,8 @@ public class CodeExecutionService {
     }
 
     public void processCallback(JudgeCallback callback) {
+        log.debug("Processing callback: {}", callback);
+        System.out.println("in call back");
         try {
             String submissionId = callback.getSubmissionId();
             String testCaseId = callback.getTestCaseId();
@@ -220,15 +224,26 @@ public class CodeExecutionService {
             testCaseIds.add(testCase.getId());
         }
         try {
-            String url = judge0Uri + "/submissions?base64_encoded=false&wait=true";
+            // Use the batch endpoint for multiple submissions
+            String url = judge0Uri + "/submissions/batch?base64_encoded=false&wait=true";
             HttpHeaders headers = createHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             ObjectMapper mapper = new ObjectMapper();
-            Object firstSubmission = submissions.getFirst();
-            String rawJson = mapper.writeValueAsString(firstSubmission);
+
+            // **KEY CHANGE HERE:** Wrap your list of JudgeSubmission objects
+            // in your BatchSubmissionRequest DTO
+            BatchSubmissionRequest batchRequest = new BatchSubmissionRequest(submissions);
+
+            // Serialize the BatchSubmissionRequest object
+            String rawJson = mapper.writeValueAsString(batchRequest);
             HttpEntity<String> entity = new HttpEntity<>(rawJson, headers);
-            System.out.println("Raw JSON for submission: " + rawJson);
+            System.out.println("Raw JSON for batch submission: " + rawJson);
+
+            // Expect an array of JudgeToken in return from the batch endpoint
             ResponseEntity<JudgeToken[]> response = restTemplate.postForEntity(url, entity, JudgeToken[].class);
+
+//            System.out.println(Arrays.toString(response.getBody()));
+            log.info(Arrays.toString(response.getBody()));
 
             if (response.getStatusCode() == HttpStatus.CREATED && response.getBody() != null) {
                 storeTokens(submission.getId(), response.getBody(), testCaseIds);
@@ -239,11 +254,20 @@ public class CodeExecutionService {
             updateSubmissionStatus(submission.getId());
         }
     }
-
+    // The storeTokens method remains the same for batch processing.
     private void storeTokens(String submissionId, JudgeToken[] tokens, List<String> testCaseIds) {
+        new SubmissionToken();
+        SubmissionToken submissionToken;
         for (int i = 0; i < tokens.length && i < testCaseIds.size(); i++) {
             log.info("Stored token {} for submission {} test case {}",
                     tokens[i].getToken(), submissionId, testCaseIds.get(i));
+            submissionToken = SubmissionToken.builder()
+                    .token(tokens[i].getToken())
+                    .submission(Submission.builder().id(submissionId).build())
+                    .testcase(Testcase.builder().id(testCaseIds.get(i)).build())
+                    .build();
+            submissionTokenService.saveSubmissionToken(submissionToken);
+
         }
     }
 

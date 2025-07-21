@@ -2,15 +2,15 @@ package com.uni.cookoff.services;
 
 import com.uni.cookoff.models.User;
 import com.uni.cookoff.repositories.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class UserService {
-    @Autowired
     private UserRepository userRepository;
 
     public Optional<User> findByUserId(String userId){

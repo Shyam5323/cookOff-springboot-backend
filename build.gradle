@@ -32,6 +32,7 @@ javafx {
 	modules = ['javafx.controls', 'javafx.fxml']
 }
 dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 	implementation 'org.snakeyaml:snakeyaml-engine:2.6'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-web'

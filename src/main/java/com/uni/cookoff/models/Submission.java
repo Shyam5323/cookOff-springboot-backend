@@ -21,22 +21,15 @@ public class Submission {
 
     private int testcasesPassed;
     private int testcasesFailed;
-    private double runtime;
 
     @Column(name = "submission_time")
     private Timestamp submissionTime;
-
-    @ManyToOne
-    @JoinColumn(name = "testcase_id")
-    private Testcase testcase;
 
     @Column(name = "language_id")
     private int languageId;
 
     @Column(columnDefinition = "TEXT")
     private String description;
-
-    private double memory;
 
     @ManyToOne
     @JoinColumn(name = "user_id")

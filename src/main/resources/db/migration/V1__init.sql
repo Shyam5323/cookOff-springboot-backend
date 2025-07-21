@@ -49,16 +49,19 @@ CREATE TABLE `submissions` (
   `question_id` CHAR(36) NOT NULL,
   `testcases_passed` INT DEFAULT 0,
   `testcases_failed` INT DEFAULT 0,
-  `runtime` DECIMAL(10,2),
   `submission_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  `testcase_id` CHAR(36),
   `language_id` INT NOT NULL,
   `description` TEXT,
-  `memory` DECIMAL(10,2),
   `user_id` CHAR(36),
   `status` TEXT,
   PRIMARY KEY (`id`),
   FOREIGN KEY (`question_id`) REFERENCES `questions`(`id`) ON DELETE CASCADE,
-  FOREIGN KEY (`testcase_id`) REFERENCES `testcases`(`id`) ON DELETE CASCADE,
   FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+);
+CREATE TABLE submission_tokens (
+       token CHAR(36) PRIMARY KEY,
+       submission_id CHAR(36) NOT NULL,
+       testcase_id CHAR(36) NOT NULL,
+       FOREIGN KEY (submission_id) REFERENCES submissions(id),
+       FOREIGN KEY (testcase_id) REFERENCES testcases(id)
 );

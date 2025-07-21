@@ -106,22 +106,32 @@ public class CodeExecutionService {
 
     public void processCallback(JudgeCallback callback) {
         log.debug("Processing callback: {}", callback);
-        System.out.println("in call back");
+        System.out.println("Callback content: " + callback.toString());
+        System.out.println("Submission ID from callback: " + callback.getSubmissionId());
+        System.out.println("Test Case ID from callback: " + callback.getTestCaseId());
         try {
             String submissionId = callback.getSubmissionId();
             String testCaseId = callback.getTestCaseId();
 
+            // Fetch the actual entities from the database
+            Submission submission = submissionService.findById(submissionId)
+                    .orElseThrow(() -> new RuntimeException("Submission not found: " + submissionId));
+
+            Testcase testcase = testcaseService.findById(testCaseId)
+                    .orElseThrow(() -> new RuntimeException("Testcase not found: " + testCaseId));
+
             SubmissionResult result = SubmissionResult.builder()
-                    .submission(Submission.builder().id(submissionId).build()) // Set the Submission object
-                    .testcase(Testcase.builder().id(testCaseId).build()) // Set the Testcase object
-                    .runtime(Double.parseDouble(callback.getTime())) // Use double directly
+                    .submission(submission) // Use the fetched entity
+                    .testcase(testcase)     // Use the fetched entity
+                    .runtime(Double.parseDouble(callback.getTime()))
                     .memory(callback.getMemory())
                     .status(mapStatus(callback.getStatus().getId()))
                     .description(callback.getStatus().getDescription())
                     .build();
 
-            submissionResultService.saveSubmissionResult(result);
+            result.setId(UuidCreator.getTimeOrdered().toString());
 
+            submissionResultService.saveSubmissionResult(result);
             updateSubmissionStatus(submissionId);
 
         } catch (Exception e) {
@@ -130,7 +140,6 @@ public class CodeExecutionService {
     }
 
     private JudgeResponse executeTestCase(SubmissionRequest request, Testcase testCase) {
-        // Use a known language ID - try 38 for Python 3
         Integer languageId = request.getLanguageId();
 
         System.out.println(request);
@@ -144,7 +153,12 @@ public class CodeExecutionService {
                 .runtime(BigDecimal.valueOf(Math.min(testCase.getRuntime(), 20.0)))
                 .build();
 
-        return sendToJudge0(submission);
+        JudgeResponse response = sendToJudge0(submission);
+        // Enrich with input and expectedOutput from the testcase
+        response.setInput(testCase.getInput());
+        response.setExpectedOutput(testCase.getExpectedOutput());
+        response.setTestCaseId(testCase.getId());
+        return response;
     }
    private JudgeResponse sendToJudge0(JudgeSubmission submission) {
        try {
@@ -180,37 +194,36 @@ public class CodeExecutionService {
         System.out.println("in submit tp judge 0");
         List<JudgeSubmission> submissions = new ArrayList<>();
         List<String> testCaseIds = new ArrayList<>();
+
         for (Testcase testCase : testCases) {
+            // Include submission ID and test case ID in the callback URL
+            String enhancedCallbackUrl = callbackUrl + "?submissionId=" + submission.getId() + "&testCaseId=" + testCase.getId();
+            System.out.println("Enhanced callback URL: " + enhancedCallbackUrl); // Debug log
+
             JudgeSubmission judgeSubmission = JudgeSubmission.builder()
                     .languageId(submission.getLanguageId())
                     .sourceCode(submission.getDescription())
                     .input((testCase.getInput()))
                     .output((testCase.getExpectedOutput()))
                     .runtime(BigDecimal.valueOf(Math.min(testCase.getRuntime(), 20.0)))
-                    .callback(callbackUrl)
+                    .callback(enhancedCallbackUrl)  // Use the enhanced callback URL
                     .build();
             submissions.add(judgeSubmission);
             testCaseIds.add(testCase.getId());
         }
+
         try {
-            // Use the batch endpoint for multiple submissions
             String url = judge0Uri + "/submissions/batch?base64_encoded=false&wait=true";
             HttpHeaders headers = createHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             ObjectMapper mapper = new ObjectMapper();
 
-            // **KEY CHANGE HERE:** Wrap your list of JudgeSubmission objects
-            // in your BatchSubmissionRequest DTO
             BatchSubmissionRequest batchRequest = new BatchSubmissionRequest(submissions);
-
-            // Serialize the BatchSubmissionRequest object
             String rawJson = mapper.writeValueAsString(batchRequest);
             HttpEntity<String> entity = new HttpEntity<>(rawJson, headers);
             System.out.println("Raw JSON for batch submission: " + rawJson);
 
-            // Expect an array of JudgeToken in return from the batch endpoint
             ResponseEntity<JudgeToken[]> response = restTemplate.postForEntity(url, entity, JudgeToken[].class);
-
 
             if (response.getStatusCode() == HttpStatus.CREATED && response.getBody() != null) {
                 storeTokens(submission.getId(), response.getBody(), testCaseIds);

@@ -58,8 +58,13 @@ public class CodeExecutionController {
      * Process callback from Judge0
      */
     @PutMapping("/callback")
-    public ResponseEntity<Void> processCallback(@RequestBody JudgeCallback callback) {
+    public ResponseEntity<Void> processCallback(
+            @RequestBody JudgeCallback callback,
+            @RequestParam("submissionId") String submissionId,
+            @RequestParam("testCaseId") String testCaseId) {
         try {
+            callback.setSubmissionId(submissionId);
+            callback.setTestCaseId(testCaseId);
             codeExecutionService.processCallback(callback);
             return ResponseEntity.ok().build();
         } catch (Exception e) {

@@ -17,7 +17,7 @@ public class CookoffApplication {
 		System.setProperty("SPRING_DATASOURCE_DRIVER_CLASS_NAME", dotenv.get("SPRING_DATASOURCE_DRIVER_CLASS_NAME"));
 		System.setProperty("judge0.uri", "https://judge0-ce.p.rapidapi.com");
 		System.setProperty("judge0.token", "f8d2911b25msh35d67ec84cdbd19p1e70d9jsnce62783e9d10");
-		System.setProperty("callback.url", "http://localhost:8080/callback");
+		System.setProperty("callback.url", "https://412409e55527.ngrok-free.app/callback");
 
 		SpringApplication.run(CookoffApplication.class, args);
 	}

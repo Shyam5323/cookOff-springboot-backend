@@ -6,10 +6,7 @@ import com.uni.cookoff.dto.request.BatchSubmissionRequest;
 import com.uni.cookoff.dto.request.JudgeSubmission;
 import com.uni.cookoff.dto.request.JudgeToken;
 import com.uni.cookoff.dto.request.SubmissionRequest;
-import com.uni.cookoff.dto.response.JudgeCallback;
-import com.uni.cookoff.dto.response.JudgeResponse;
-import com.uni.cookoff.dto.response.RunCodeResponse;
-import com.uni.cookoff.dto.response.SubmissionResponse;
+import com.uni.cookoff.dto.response.*;
 import com.uni.cookoff.models.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -158,11 +155,15 @@ public class CodeExecutionService {
         response.setInput(testCase.getInput());
         response.setExpectedOutput(testCase.getExpectedOutput());
         response.setTestCaseId(testCase.getId());
+//        JudgeStatus status = new JudgeStatus("201", "Acceptedkjashfjfaba232323");
+//        response.setStatus(status);
+        System.out.println("JudgeResponse: " + response);
+
         return response;
     }
    private JudgeResponse sendToJudge0(JudgeSubmission submission) {
        try {
-           String url = judge0Uri + "/submissions?base64_encoded=false&wait=false";
+           String url = judge0Uri + "/submissions?base64_encoded=false&wait=true";
 
         HttpHeaders headers = createHeaders();
            headers.setContentType(MediaType.APPLICATION_JSON);

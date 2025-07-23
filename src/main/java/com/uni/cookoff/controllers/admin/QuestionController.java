@@ -4,6 +4,7 @@ import com.uni.cookoff.dto.request.CreateQuestionRequest;
 import com.uni.cookoff.models.Question;
 import com.uni.cookoff.services.QuestionService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.repository.query.Param;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
@@ -53,5 +54,10 @@ public class QuestionController {
             savedQuestions.add(questionService.saveQuestion(question));
         }
         return ResponseEntity.ok(savedQuestions);
+    }
+
+    @GetMapping("/get-questions/{round}")
+    public ResponseEntity<?> getallQuestions(@PathVariable int round) {
+        return ResponseEntity.ok(questionService.getAllQuestionsByRound(round));
     }
 }

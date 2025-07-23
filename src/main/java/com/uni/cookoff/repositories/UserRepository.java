@@ -15,6 +15,7 @@ public interface UserRepository extends JpaRepository<User, String> {
     Optional<User> findByEmail(String email);
     Optional<User> findByRegNo(String regNo);
     List<User> findByRole(String role);
+
     List<User> findByIsBannedFalse();
     List<User> findByRoundQualified(int roundQualified);
     List<User> findByScoreGreaterThanEqual(double score);

@@ -32,4 +32,8 @@ public class QuestionService {
     public boolean existsById(String id) {
         return questionRepository.existsById(id);
     }
+
+    public List<Question> getAllQuestionsByRound(int round) {
+        return questionRepository.findByRound(round);
+    }
 }

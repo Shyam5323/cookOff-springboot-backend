@@ -62,9 +62,9 @@ public class CodeExecutionService {
             JudgeResponse result = executeTestCase(request, testCase);
             results.add(result);
 
-            if ("Accepted".equals(result.getStatus().getDescription())) {
-                testCasesPassed++;
-            }
+//            if ("Accepted".equals(result.getStatus().getDescription())) {
+//                testCasesPassed++;
+//            }
         }
 
         return RunCodeResponse.builder()

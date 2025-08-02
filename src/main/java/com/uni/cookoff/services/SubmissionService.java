@@ -29,8 +29,8 @@ public class SubmissionService {
         return submissionRepository.findByQuestionId(questionId);
     }
 
-    public List<Submission> findByStatus(String status) {
-        return submissionRepository.findByStatus(status);
+    public List<Submission> findRecentByUserId(String userId, int limit) {
+        return submissionRepository.findRecentByUserId(userId, limit);
     }
 
     public Submission saveSubmission(Submission submission) {
@@ -43,5 +43,9 @@ public class SubmissionService {
 
     public boolean existsById(String id) {
         return submissionRepository.existsById(id);
+    }
+
+    public List<Submission> findByUserIdAndStatus(String userId, String status) {
+        return submissionRepository.findByUserIdAndStatus(userId, status);
     }
 }

@@ -10,4 +10,5 @@ import java.util.List;
 public interface QuestionRepository extends JpaRepository<Question, String> {
     List<Question> findByRound(int round);
     List<Question> findByTitleContainingIgnoreCase(String title);
+    List<Question> findByRoundLessThanEqual(int round);
 }
